@@ -179,10 +179,9 @@
       nohook: true
     }, {
       render: function() {
-        var arcs, bubbles;
+        var arcs, bubbles, el, heatz, map;
         this.$el.height($(window).height());
-        Datamap;
-        window.map = this.map = new Datamap({
+        window.map = this.map = map = new Datamap({
           element: this.el,
           responsive: true,
           fills: {
@@ -202,8 +201,50 @@
             animationSpeed: 600
           }
         });
+        el = this.el;
+        map.addPlugin('heatMap', function(layer, data) {
+          var heatMap, max;
+          if (!this._heatMap) {
+            this._heatMap = heatMap = h337.create({
+              container: el,
+              gradient: {
+                '1.0': '#00FF00'
+              }
+            });
+          } else {
+            heatMap = this._heatMap;
+          }
+          heatMap.setData({
+            max: 0,
+            data: []
+          });
+          max = 0;
+          _.each(data, (function(_this) {
+            return function(entry) {
+              var _ref;
+              if (!entry.val) {
+                return;
+              }
+              _ref = _this.latLngToXY(entry.latitude, entry.longitude), entry.x = _ref[0], entry.y = _ref[1];
+              if (entry.val > max) {
+                max = entry.val;
+                heatMap.setDataMax(max);
+              }
+              return heatMap.addData(entry);
+            };
+          })(this));
+          return console.log(max);
+        });
         arcs = [];
         bubbles = [];
+        heatz = [];
+        env.gogo = function() {
+          var ips;
+          ips = ["199.27.128.1", "173.245.48.1", "103.21.244.1", "103.22.200.1", "103.31.4.1", "141.101.64.1", "108.162.192.1", "190.93.240.1", "188.114.96.1", "197.234.240.1", "198.41.128.1", "162.158.0.1", "104.16.0.1", "172.64.0.1"];
+          return _.map(ips, function(ip) {
+            return env.trace(ip);
+          });
+        };
         env.trace = (function(_this) {
           return function(host) {
             var oldloc;
@@ -211,7 +252,7 @@
             return env.lweb.query({
               trace: host
             }, function(msg) {
-              var arc, bubble, options;
+              var arc, bubble, heat, options;
               if (!(msg != null ? msg.loc : void 0)) {
                 return;
               }
@@ -230,7 +271,12 @@
                 highlightBorderWidth: 2,
                 highlightFillOpacity: 0.85
               };
+              heat = {
+                radius: 50,
+                val: 1
+              };
               _.extend(bubble, msg.loc);
+              _.extend(heat, msg.loc);
               bubbles.push(bubble);
               _this.map.bubbles(bubbles);
               if (!oldloc) {

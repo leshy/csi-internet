@@ -102,9 +102,8 @@ init = exports.init = (env,callback) ->
     defineView "map", template: "", nohook: true,
         render: ->
             @$el.height $(window).height()
-            Datamap
 
-            window.map = @map = new Datamap
+            window.map = @map = map = new Datamap
                 element: @el
                 responsive: true
                 fills:
@@ -123,10 +122,40 @@ init = exports.init = (env,callback) ->
                   strokeWidth: 1
                   arcSharpness: 1
                   animationSpeed: 600
+
+            el = @el
+            map.addPlugin 'heatMap', ( layer, data ) ->
+                if not @_heatMap
+                    @_heatMap = heatMap = h337.create
+                        container: el
+                        gradient: {
+                            '1.0': '#00FF00' }
+                else heatMap = @_heatMap
                     
+                heatMap.setData max:0, data: []
+                max = 0
+                _.each data, (entry) =>
+                    if not entry.val then return
+
+                    [ entry.x, entry.y ] = @latLngToXY(entry.latitude, entry.longitude)
+                    
+                    if entry.val > max
+                        max = entry.val
+                        heatMap.setDataMax(max)
+
+                    heatMap.addData(entry)
+                
+                console.log max
+                                                            
             arcs = []
             bubbles = []
-            
+            heatz = []
+
+            env.gogo = ->
+                ips = [ "199.27.128.1", "173.245.48.1", "103.21.244.1", "103.22.200.1", "103.31.4.1", "141.101.64.1", "108.162.192.1", "190.93.240.1", "188.114.96.1", "197.234.240.1", "198.41.128.1", "162.158.0.1", "104.16.0.1", "172.64.0.1" ]
+                _.map ips, (ip) ->
+                    env.trace ip
+                    
             env.trace = (host) =>
                 oldloc = undefined
                 
@@ -149,10 +178,19 @@ init = exports.init = (env,callback) ->
                         highlightBorderWidth: 2,
                         highlightFillOpacity: 0.85
 
-                    _.extend bubble, msg.loc
-                    bubbles.push bubble
-                    @map.bubbles bubbles
+                    heat =
+                        radius: 50
+                        val: 1
                         
+                    _.extend bubble, msg.loc
+                    _.extend heat, msg.loc
+                    
+                    bubbles.push bubble
+                    #heatz.push heat
+                    
+                    @map.bubbles bubbles
+                    #@map.heatMap heatz
+                    
                     if not oldloc then oldloc = msg; return
                     options =
                         strokeWidth: 1
