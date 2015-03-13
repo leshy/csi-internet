@@ -12888,6 +12888,9 @@ button.close {
   width: 25px;
   height: 25px;
 }
-#map {
-  height: 800px;
+body {
+  overflow: hidden;
+}
+.map {
+  background: #222234;
 }

@@ -179,10 +179,89 @@
       nohook: true
     }, {
       render: function() {
+        var arcs, bubbles;
         this.$el.height($(window).height());
-        this.map = new Datamap({
-          element: this.el
+        Datamap;
+        window.map = this.map = new Datamap({
+          element: this.el,
+          responsive: true,
+          fills: {
+            defaultFill: "#2C2C43",
+            red: 'red'
+          },
+          fillOpacity: 0.5,
+          geographyConfig: {
+            hideAntarctica: true,
+            borderWidth: 1,
+            borderColor: "#585886"
+          },
+          arcConfig: {
+            strokeColor: '#00ff00',
+            strokeWidth: 1,
+            arcSharpness: 1,
+            animationSpeed: 600
+          }
         });
+        arcs = [];
+        bubbles = [];
+        env.trace = (function(_this) {
+          return function(host) {
+            var oldloc;
+            oldloc = void 0;
+            return env.lweb.query({
+              trace: host
+            }, function(msg) {
+              var arc, bubble, options;
+              if (!(msg != null ? msg.loc : void 0)) {
+                return;
+              }
+              bubble = {
+                name: "ip: " + msg.ip + "<br>hostname: " + msg.hostname + "<br>city: " + msg.city,
+                radius: 5,
+                yeild: 15000,
+                fillKey: 'red',
+                borderWidth: 1,
+                borderColor: 'rgba(0,255,0,1)',
+                popupOnHover: true,
+                fillOpacity: 0,
+                highlightOnHover: true,
+                highlightFillColor: '#FC8D59',
+                highlightBorderColor: 'rgba(250, 15, 160, 0.2)',
+                highlightBorderWidth: 2,
+                highlightFillOpacity: 0.85
+              };
+              _.extend(bubble, msg.loc);
+              bubbles.push(bubble);
+              _this.map.bubbles(bubbles);
+              if (!oldloc) {
+                oldloc = msg;
+                return;
+              }
+              options = {
+                strokeWidth: 1,
+                strokeColor: 'rgba(255,255,255,1)',
+                greatArc: true,
+                arcSharpness: 1.1
+              };
+              if (oldloc.vpn) {
+                options.strokeColor = 'rgba(0,255,0,1)';
+              }
+              arcs.push(arc = {
+                origin: oldloc.loc,
+                destination: msg.loc,
+                options: options
+              });
+              oldloc = msg;
+              return _this.map.arc(arcs);
+            });
+          };
+        })(this);
+        window.addEventListener('resize', (function(_this) {
+          return function() {
+            _this.$el.height($(window).height());
+            return _this.map.resize();
+          };
+        })(this));
         return this;
       }
     });

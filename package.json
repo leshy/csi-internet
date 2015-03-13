@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/leshy/visual-traceroute/issues"
   },
-  "homepage": "https://github.com/leshy/visual-traceroute"
+  "homepage": "https://github.com/leshy/visual-traceroute",
+  "dependencies": {
+    "geoip-native": "0.0.8",
+    "request": "^2.53.0"
+  }
 }

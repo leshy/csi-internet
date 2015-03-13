@@ -101,11 +101,78 @@ init = exports.init = (env,callback) ->
 
     defineView "map", template: "", nohook: true,
         render: ->
-            @$el.height($(window).height())
-            @map = new Datamap
-                element: @el
-                
+            @$el.height $(window).height()
+            Datamap
 
+            window.map = @map = new Datamap
+                element: @el
+                responsive: true
+                fills:
+                    defaultFill: "#2C2C43"
+                    red: 'red'
+                    
+                fillOpacity:0.5
+
+                geographyConfig: 
+                    hideAntarctica: true
+                    borderWidth: 1
+                    borderColor: "#585886"
+                
+                arcConfig:
+                  strokeColor: '#00ff00'
+                  strokeWidth: 1
+                  arcSharpness: 1
+                  animationSpeed: 600
+                    
+            arcs = []
+            bubbles = []
+            
+            env.trace = (host) =>
+                oldloc = undefined
+                
+                env.lweb.query { trace: host }, (msg) =>
+                    
+                    if not msg?.loc then return
+
+                    bubble = 
+                        name: "ip: #{msg.ip}<br>hostname: #{msg.hostname}<br>city: #{msg.city}"
+                        radius: 5
+                        yeild: 15000
+                        fillKey: 'red'
+                        borderWidth: 1,
+                        borderColor: 'rgba(0,255,0,1)',
+                        popupOnHover: true,
+                        fillOpacity: 0,
+                        highlightOnHover: true,
+                        highlightFillColor: '#FC8D59',
+                        highlightBorderColor: 'rgba(250, 15, 160, 0.2)',
+                        highlightBorderWidth: 2,
+                        highlightFillOpacity: 0.85
+
+                    _.extend bubble, msg.loc
+                    bubbles.push bubble
+                    @map.bubbles bubbles
+                        
+                    if not oldloc then oldloc = msg; return
+                    options =
+                        strokeWidth: 1
+                        strokeColor: 'rgba(255,255,255,1)'
+                        greatArc: true
+                        arcSharpness: 1.1
+
+
+                    if oldloc.vpn then options.strokeColor = 'rgba(0,255,0,1)'
+                        
+                    arcs.push arc =
+                        origin: oldloc.loc,
+                        destination: msg.loc
+                        options: options
+                    oldloc = msg
+                    @map.arc(arcs)
+                
+            window.addEventListener 'resize', =>
+                @$el.height $(window).height()
+                @map.resize();
             @
 
     defineView "presenceEntry", template: require('./ejs/presenceEntry.ejs'), nohook: true,

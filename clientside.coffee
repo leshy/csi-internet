@@ -58,7 +58,7 @@ joinChannel = (env,callback) ->
         if msg.state then env.presence.add new mac mac: msg.mac
         else env.presence.each (oldMac) ->
             if oldMac.get('mac')== msg.mac then env.presence.remove oldMac
-    
+
 initViews = (env,callback) ->
     env.views = require './clientside/views'
     env.views.init env, callback

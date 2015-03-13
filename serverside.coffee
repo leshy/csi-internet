@@ -13,6 +13,12 @@ channelProtocol = require 'lweb3/protocols/channel'
 
 ribcage = require 'ribcage'
 
+util = require 'util'
+
+traceroute = require './traceroute'
+geoip = require("geoip-native");
+
+request = require 'request'
 settings =
     production: false
     module:
@@ -105,6 +111,49 @@ initRoutes = (env,callback) ->
     
     env.app.get '/', (req,res) ->
         res.render 'index', { title: 'vtrace', version: env.version, production: env.settings.production }
+
+
+    locate = (ip,callback) ->
+        if ip is '10.66.6.1'
+            return callback vpn: true, loc: { latitude: 45.1667, longitude: 15.5000 }
+        if ip is '10.16.0.1'
+            return callback vpn: true, loc: { latitude: '52.5167', longitude: '13.3833' }
+                
+        
+                
+        request.get 'http://ipinfo.io/' + ip, {json: true}, (e, r, details) ->
+            if details.loc
+                loc = details.loc.split(',')
+                details.loc = { latitude: loc[0], longitude: loc[1] }
+            callback details
+        
+    env.lweb.onQuery { trace: String }, (msg,reply) ->
+        
+        traceroute.trace msg.trace, (err,hops) ->
+            console.log colors.red(msg.trace)
+#            console.log util.inspect hops
+            
+            geoip.lookup hops[4]
+            
+            reply.write { hops: hops }
+            async.series _.map(hops, ((hop) -> ( (callback) ->
+                
+                data = {}
+                data.ip = ip = _.keys(hop)?[0]
+                if not data.ip then return callback()
+                data.ping =  hop[data.ip]?[0]
+                console.log colors.green(ip)
+                locate ip, (details) ->
+                    _.extend data, details
+                    console.log util.inspect data
+                    reply.write data
+                    callback()
+
+
+                )))
+            , (err,data) ->
+                console.log 'reply end'
+                reply.end()
 
     callback()
 
