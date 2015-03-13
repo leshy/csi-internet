@@ -1,0 +1,19 @@
+{
+  "name": "traceroute",
+  "version": "1.0.0",
+  "description": "visual traceroute",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leshy/visual-traceroute.git"
+  },
+  "author": "lesh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/leshy/visual-traceroute/issues"
+  },
+  "homepage": "https://github.com/leshy/visual-traceroute"
+}
