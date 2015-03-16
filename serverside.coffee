@@ -16,16 +16,13 @@ ribcage = require 'ribcage'
 util = require 'util'
 
 traceroute = require './traceroute'
-geoip = require("geoip-native");
+geoip = require "geoip-native"
+ping = require "net-ping"
 
 request = require 'request'
 settings =
     production: false
     module:
-        db:
-            name: 'traceroute'
-            host: 'localhost'
-            port: 27017
         express:
             port: 3006
             static: __dirname + '/static'
@@ -34,8 +31,14 @@ settings =
 
         user: false
 
-
 env = { settings: settings }
+
+locate = (ip,callback) ->
+    request.get 'http://ipinfo.io/' + ip, {json: true}, (e, r, details) ->
+        if details.loc
+            loc = details.loc.split(',')
+            details.loc = { latitude: loc[0], longitude: loc[1] }
+        callback details
 
 initRibcage = (env,callback) ->
     express = require 'express'
@@ -48,14 +51,11 @@ initRibcage = (env,callback) ->
         env.app.set 'views', env.settings.module.express.views
         env.app.use express.compress()
         env.app.use express.favicon()
-        env.app.use express.bodyParser()
-        
+        env.app.use express.bodyParser()        
         env.app.set 'etag', true
         env.app.set 'x-powered-by', false
-
         env.app.use env.app.router
         env.app.use express.static(env.settings.module.express.static)
-
         env.app.use (err, req, res, next) =>
             throw err
             env.log 'web request error', { error: util.inspect(err) }, 'error', 'http'
@@ -113,28 +113,22 @@ initRoutes = (env,callback) ->
         res.render 'index', { title: 'vtrace', version: env.version, production: env.settings.production }
 
 
-    locate = (ip,callback) ->
-        if ip is '10.66.6.1'
-            return callback vpn: true, loc: { latitude: 45.1667, longitude: 15.5000 }
-        if ip is '10.16.0.1'
-            return callback vpn: true, loc: { latitude: '52.5167', longitude: '13.3833' }
+    env.lweb.onQuery { ping: String }, (msg,reply) ->
+        pings = ping.createSession()
+        pings.pingHost msg.ping, (err,data,s,r) ->
+            pings.close()
+            console.log err,data,r - s, 'ms'
+            if err then return reply.end {}
                 
-        
-                
-        request.get 'http://ipinfo.io/' + ip, {json: true}, (e, r, details) ->
-            if details.loc
-                loc = details.loc.split(',')
-                details.loc = { latitude: loc[0], longitude: loc[1] }
-            callback details
-        
+            locate msg.ping, (data) -> reply.end(_.extend data, ping: r - s)
+
+
     env.lweb.onQuery { trace: String }, (msg,reply) ->
-        
         traceroute.trace msg.trace, (err,hops) ->
             console.log colors.red(msg.trace)
-#            console.log util.inspect hops
             
+            if not hops? or hops?.length < 5 then return reply.end()    
             geoip.lookup hops[4]
-            
             reply.write { hops: hops }
             async.series _.map(hops, ((hop) -> ( (callback) ->
                 
@@ -148,8 +142,6 @@ initRoutes = (env,callback) ->
                     console.log util.inspect data
                     reply.write data
                     callback()
-
-
                 )))
             , (err,data) ->
                 console.log 'reply end'
